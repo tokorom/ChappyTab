@@ -10,6 +10,7 @@ struct MyApp: App {
             ContentView(browser: browser)
                 .onAppear { browser.installShortcuts(shortcuts) }
         }
+        .windowStyle(.hiddenTitleBar)
         .defaultSize(width: 1200, height: 820)
         .commands {
             CommandGroup(replacing: .newItem) {

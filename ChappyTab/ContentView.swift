@@ -24,6 +24,7 @@ struct ContentView: View {
                     .id(tab.id)
             }
         }
+        .ignoresSafeArea(.container, edges: .top)
         .frame(minWidth: 720, minHeight: 480)
     }
 }
@@ -31,32 +32,48 @@ struct ContentView: View {
 private struct TabBar: View {
     let browser: BrowserModel
     var body: some View {
-        HStack(spacing: 8) {
-            ScrollViewReader { proxy in
-                ScrollView(.horizontal) {
-                    HStack(spacing: 4) {
-                        ForEach(browser.tabs) { tab in
-                            TabItem(tab: tab, selected: browser.selectedID == tab.id,
-                                    select: { browser.selectedID = tab.id },
-                                    close: { browser.closeTab(tab.id) })
-                                .id(tab.id)
+        GeometryReader { geometry in
+            HStack(spacing: 4) {
+                // Keep the native close, minimize and fullscreen controls unobstructed.
+                Color.clear.frame(width: 78)
+                ScrollViewReader { proxy in
+                    ScrollView(.horizontal) {
+                        HStack(spacing: 4) {
+                            ForEach(browser.tabs) { tab in
+                                TabItem(tab: tab, selected: browser.selectedID == tab.id,
+                                        select: { browser.selectedID = tab.id },
+                                        close: { browser.closeTab(tab.id) })
+                                    .id(tab.id)
+                            }
                         }
+                        .padding(.vertical, 5)
                     }
-                    .padding(8)
+                    .scrollIndicators(.hidden)
+                    .onChange(of: browser.selectedID) { _, id in
+                        if let id { proxy.scrollTo(id) }
+                    }
+                    .onChange(of: browser.tabs.count) { _, _ in
+                        if let id = browser.selectedID { proxy.scrollTo(id) }
+                    }
                 }
-                .scrollIndicators(.hidden)
-                .onChange(of: browser.selectedID) { _, id in
-                    if let id { proxy.scrollTo(id) }
+                .frame(width: min(CGFloat(browser.tabs.count) * 214 - 4,
+                                  max(0, geometry.size.width - 170)))
+                Button { browser.addTab() } label: {
+                    Image(systemName: "plus").frame(width: 30, height: 34)
                 }
-            }
-            Button { browser.addTab() } label: { Image(systemName: "plus") }
                 .help("新しいタブ")
                 .accessibilityLabel("新しいタブ")
-                .padding(.trailing, 12)
+                WindowDragArea()
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .accessibilityHidden(true)
+            }
+            .frame(height: 44)
         }
+        .frame(height: 44)
         .buttonStyle(.plain)
         .background(.bar)
     }
+
 }
 
 private struct TabItem: View {
@@ -116,4 +133,26 @@ private struct BrowserWebView: NSViewRepresentable {
     let webView: WKWebView
     func makeNSView(context: Context) -> WKWebView { webView }
     func updateNSView(_ nsView: WKWebView, context: Context) {}
+}
+
+/// Only the empty part of the tab strip handles window dragging.
+private struct WindowDragArea: NSViewRepresentable {
+    func makeNSView(context: Context) -> DragView { DragView() }
+    func updateNSView(_ nsView: DragView, context: Context) {}
+
+    final class DragView: NSView {
+        override func mouseDown(with event: NSEvent) {
+            guard let window else { return }
+            if event.clickCount == 2 {
+                let action = UserDefaults.standard.string(forKey: "AppleActionOnDoubleClick")
+                switch action {
+                case "Minimize": window.performMiniaturize(nil)
+                case "None": break
+                default: window.performZoom(nil)
+                }
+            } else {
+                window.performDrag(with: event)
+            }
+        }
+    }
 }
