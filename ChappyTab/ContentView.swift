@@ -30,6 +30,7 @@ struct ContentView: View {
 }
 
 private struct TabBar: View {
+    @Environment(\.colorScheme) private var colorScheme
     let browser: BrowserModel
     var body: some View {
         GeometryReader { geometry in
@@ -71,12 +72,15 @@ private struct TabBar: View {
         }
         .frame(height: 44)
         .buttonStyle(.plain)
-        .background(.bar)
+        .background(colorScheme == .dark
+                    ? Color(red: 0.14, green: 0.20, blue: 0.23)
+                    : Color(red: 0.73, green: 0.89, blue: 0.93))
     }
 
 }
 
 private struct TabItem: View {
+    @Environment(\.colorScheme) private var colorScheme
     let tab: BrowserTab
     let selected: Bool
     let select: () -> Void
@@ -87,7 +91,9 @@ private struct TabItem: View {
                 HStack(spacing: 8) {
                     Image(systemName: tab.isLoading ? "arrow.trianglehead.2.clockwise" : "bubble.left.and.bubble.right")
                         .foregroundStyle(selected ? Color.accentColor : .secondary)
-                    Text(tab.title).lineLimit(1).frame(maxWidth: .infinity, alignment: .leading)
+                    Text(tab.title)
+                        .fontWeight(selected ? .semibold : .regular)
+                        .lineLimit(1).frame(maxWidth: .infinity, alignment: .leading)
                 }
                 .contentShape(Rectangle())
             }
@@ -98,7 +104,22 @@ private struct TabItem: View {
         .padding(.horizontal, 10)
         .padding(.vertical, 9)
         .frame(width: 210)
-        .background(selected ? Color(nsColor: .controlBackgroundColor) : .clear, in: RoundedRectangle(cornerRadius: 8))
+        .background {
+            if selected {
+                RoundedRectangle(cornerRadius: 9)
+                    .fill(colorScheme == .dark ? Color(white: 0.28) : .white)
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 9)
+                            .strokeBorder(.primary.opacity(0.16), lineWidth: 1)
+                    }
+                    .shadow(color: .black.opacity(0.12), radius: 2, y: 1)
+            } else {
+                HStack {
+                    Spacer()
+                    Rectangle().fill(.primary.opacity(0.22)).frame(width: 1, height: 16)
+                }
+            }
+        }
         .help(tab.title)
     }
 }
@@ -116,11 +137,9 @@ private struct BrowserToolbar: View {
             } label: { Image(systemName: tab.isLoading ? "xmark" : "arrow.clockwise") }
                 .help(tab.isLoading ? "読み込みを停止" : "再読み込み")
             Button { tab.goHome() } label: { Image(systemName: "house") }.help("ChatGPTを開く")
-            Text(tab.address)
-                .font(.system(size: 12)).foregroundStyle(.secondary)
-                .lineLimit(1).truncationMode(.middle)
-                .textSelection(.enabled)
-                .frame(maxWidth: .infinity, alignment: .leading)
+            BrowserAddressField(address: tab.address)
+                .frame(maxWidth: .infinity)
+                .frame(height: 30)
             if tab.isLoading { ProgressView().controlSize(.small) }
             SettingsLink { Image(systemName: "gearshape") }.help("設定")
         }
@@ -153,6 +172,53 @@ private struct WindowDragArea: NSViewRepresentable {
             } else {
                 window.performDrag(with: event)
             }
+        }
+    }
+}
+
+/// A selectable, read-only address field. Its entire padded area selects the URL.
+private struct BrowserAddressField: NSViewRepresentable {
+    let address: String
+
+    func makeNSView(context: Context) -> AddressTextField {
+        let field = AddressTextField()
+        field.cell = PaddedAddressCell()
+        field.isEditable = false
+        field.isSelectable = true
+        field.isBezeled = false
+        field.drawsBackground = true
+        field.backgroundColor = .controlBackgroundColor
+        field.textColor = .labelColor
+        field.font = .systemFont(ofSize: 12)
+        field.lineBreakMode = .byTruncatingMiddle
+        field.wantsLayer = true
+        field.layer?.cornerRadius = 8
+        field.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+        field.setAccessibilityLabel("現在のURL")
+        field.toolTip = "クリックでURL全体を選択・⌘Cでコピー"
+        return field
+    }
+
+    func updateNSView(_ field: AddressTextField, context: Context) {
+        guard field.stringValue != address else { return }
+        let wasSelected = field.currentEditor() != nil
+        field.stringValue = address
+        if wasSelected { field.selectText(nil) }
+    }
+
+    final class AddressTextField: NSTextField {
+        override func mouseDown(with event: NSEvent) {
+            selectText(nil)
+        }
+    }
+
+    final class PaddedAddressCell: NSTextFieldCell {
+        override func drawingRect(forBounds rect: NSRect) -> NSRect {
+            var bounds = super.drawingRect(forBounds: rect.insetBy(dx: 10, dy: 0))
+            let height = cellSize(forBounds: bounds).height
+            bounds.origin.y += max(0, (bounds.height - height) / 2)
+            bounds.size.height = min(bounds.height, height)
+            return bounds
         }
     }
 }
