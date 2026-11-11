@@ -19,7 +19,6 @@ final class BrowserTab: NSObject, Identifiable, WKNavigationDelegate, WKUIDelega
     init(configuration: WKWebViewConfiguration? = nil, loadHome: Bool = true) {
         let configuration = configuration ?? WKWebViewConfiguration()
         configuration.websiteDataStore = .default()
-        ChatGPTWebCompatibility.install(in: configuration.userContentController)
         webView = WKWebView(frame: .zero, configuration: configuration)
         super.init()
         webView.navigationDelegate = self
