@@ -128,7 +128,7 @@ struct ShortcutSettingsView: View {
             }
         }
         .padding(24)
-        .frame(width: 540, height: 340)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .sheet(item: $editingAction) { action in
             ShortcutRecordingDialog(action: action, settings: settings)
         }

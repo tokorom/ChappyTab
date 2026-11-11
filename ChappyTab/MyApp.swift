@@ -28,8 +28,9 @@ struct MyApp: App {
             }
         }
         Settings {
-            ShortcutSettingsView(settings: shortcuts)
+            SettingsView(shortcuts: shortcuts)
         }
+        .defaultSize(width: 780, height: 460)
     }
 
     private func actionButton(_ action: BrowserAction, perform: @escaping () -> Void) -> some View {
