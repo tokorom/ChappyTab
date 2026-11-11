@@ -25,6 +25,19 @@ ChatGPT用のmacOSタブブラウザ。macOS 14以降、Xcodeで `ChappyTab.xcod
 
 WebKitのダウンロード指定（HTMLのdownload属性、Blob・Data URL、添付ファイル応答、表示できないファイル形式）を受け取り、保存先を選ぶダイアログを表示します。認証情報はWebKitのセッションをそのまま使用します。保存のキャンセルに対応し、既存ファイルの置き換えは転送成功後に行います。タブを閉じても開始済みのダウンロードは継続します（アプリ終了後の再開には未対応）。
 
+## コードブロックの表示
+
+ChatGPTのコードブロックで、`corner-shape: superellipse(1.1)` とクリッピングの組み合わせにより、WebKitでは背景だけが表示される場合があります。`chatgpt.com` と `chat.openai.com` のメインページ内の `[data-code-block]` に `corner-shape: round` を適用して回避します。角の形状だけを変更し、コード本文・色分け・スクロール・コピーボタンはページの実装を使用します。
+
+ローカルHTMLを使ったWKWebView上の確認は、次のコマンドで実行できます。
+
+```sh
+swiftc -parse-as-library ChappyTab/ChatGPTWebCompatibility.swift tests/ChatGPTWebCompatibilityTests.swift -o /tmp/chappytab-web-tests
+/tmp/chappytab-web-tests
+```
+
+描画不具合の確認には実際の会話も使用します。コードと言語名・ボタンが表示されること、ブロック内のスクロールとコピー、ページの再読み込みとタブ切り替え後も表示されることを確認してください。
+
 ## ログインの確認
 
 1. アプリ内でChatGPTにサインインする。
